@@ -16,20 +16,22 @@ class MaxDistParams {
   MaxDistParams(this.epsilon);
 }
 
+typedef MarkerBuilder<T extends ClusterItem> = Future<Marker> Function(Cluster<T> cluster);
+
 class ClusterManager<T extends ClusterItem> {
   ClusterManager(this._items, this.updateMarkers,
-      {Future<Marker> Function(Cluster<T>)? markerBuilder,
+      {MarkerBuilder<T>? markerBuilder,
       this.levels = const [1, 4.25, 6.75, 8.25, 11.5, 14.5, 16.0, 16.5, 20.0],
       this.extraPercent = 0.5,
       this.maxItemsForMaxDistAlgo = 200,
       this.clusterAlgorithm = ClusterAlgorithm.GEOHASH,
       this.maxDistParams,
       this.stopClusteringZoom})
-      : this.markerBuilder = markerBuilder ?? _basicMarkerBuilder,
+      : this.markerBuilder = markerBuilder ?? _basicMarkerBuilder<T>(),
         assert(levels.length <= precision);
 
   /// Method to build markers
-  final Future<Marker> Function(Cluster<T>) markerBuilder;
+  final MarkerBuilder<T> markerBuilder;
 
   // Num of Items to switch from MAX_DIST algo to GEOHASH
   final int maxItemsForMaxDistAlgo;
@@ -215,18 +217,19 @@ class ClusterManager<T extends ClusterItem> {
     return _computeClusters(newInputList, markerItems, level: level);
   }
 
-  static Future<Marker> Function(Cluster) get _basicMarkerBuilder =>
-      (cluster) async {
-        return Marker(
-          markerId: MarkerId(cluster.getId()),
-          position: cluster.location,
-          onTap: () {
-            print(cluster);
-          },
-          icon: await _getBasicClusterBitmap(cluster.isMultiple ? 125 : 75,
-              text: cluster.isMultiple ? cluster.count.toString() : null),
-        );
-      };
+  static MarkerBuilder<T> _basicMarkerBuilder<T extends ClusterItem>() {
+    return (Cluster<T> cluster) async {
+      return Marker(
+        markerId: MarkerId(cluster.getId()),
+        position: cluster.location,
+        onTap: () {
+          print(cluster);
+        },
+        icon: await _getBasicClusterBitmap(cluster.isMultiple ? 125 : 75,
+            text: cluster.isMultiple ? cluster.count.toString() : null),
+      );
+    };
+  }
 
   static Future<BitmapDescriptor> _getBasicClusterBitmap(int size,
       {String? text}) async {
